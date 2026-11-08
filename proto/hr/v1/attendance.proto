@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package hr.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "hr/v1/common.proto";
+
+option go_package = "hr-service/core/gen/hr/v1;hrv1";
+
+service AttendanceService {
+  rpc CheckIn(CheckInRequest) returns (AttendanceRecord) {
+    option (google.api.http) = {
+      post: "/v1/employees/{employee_id}/attendance/check-in"
+      body: "*"
+    };
+  }
+
+  rpc CheckOut(CheckOutRequest) returns (AttendanceRecord) {
+    option (google.api.http) = {
+      post: "/v1/employees/{employee_id}/attendance/check-out"
+      body: "*"
+    };
+  }
+
+  rpc CreateAttendance(CreateAttendanceRequest) returns (AttendanceRecord) {
+    option (google.api.http) = {
+      post: "/v1/employees/{employee_id}/attendance"
+      body: "*"
+    };
+  }
+
+  rpc ListEmployeeAttendance(ListEmployeeAttendanceRequest) returns (ListAttendanceResponse) {
+    option (google.api.http) = {
+      get: "/v1/employees/{employee_id}/attendance"
+    };
+  }
+
+  rpc DeleteAttendance(DeleteAttendanceRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/attendance/{id}"
+    };
+  }
+
+  rpc GetDepartmentAttendance(GetDepartmentAttendanceRequest) returns (DepartmentAttendance) {
+    option (google.api.http) = {
+      get: "/v1/departments/{department_id}/attendance"
+    };
+  }
+}
+
+message AttendanceRecord {
+  string id = 1;
+  string employee_id = 2;
+  string date = 3;
+  string check_in = 4;
+  string check_out = 5;
+  int32 worked_minutes = 6;
+  int32 late_minutes = 7;
+  bool is_late = 8;
+  string note = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message CheckInRequest {
+  string employee_id = 1;
+  string note = 2;
+}
+
+message CheckOutRequest {
+  string employee_id = 1;
+}
+
+message CreateAttendanceRequest {
+  string employee_id = 1;
+  string date = 2;
+  string check_in = 3;
+  string check_out = 4;
+  string note = 5;
+}
+
+message ListEmployeeAttendanceRequest {
+  string employee_id = 1;
+  string date_from = 2;
+  string date_to = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message AttendanceSummary {
+  int32 days_present = 1;
+  int32 days_late = 2;
+  int32 total_worked_minutes = 3;
+  int32 total_late_minutes = 4;
+}
+
+message ListAttendanceResponse {
+  repeated AttendanceRecord records = 1;
+  int32 total = 2;
+  AttendanceSummary summary = 3;
+}
+
+message DeleteAttendanceRequest {
+  string id = 1;
+}
+
+message GetDepartmentAttendanceRequest {
+  string department_id = 1;
+  string date = 2;
+}
+
+enum PresenceStatus {
+  PRESENCE_STATUS_UNSPECIFIED = 0;
+  PRESENT = 1;
+  LATE = 2;
+  ABSENT = 3;
+  LEAVE = 4;
+  DAY_OFF = 5;
+}
+
+message DepartmentAttendanceEntry {
+  EmployeeSummary employee = 1;
+  PresenceStatus status = 2;
+  string check_in = 3;
+  string check_out = 4;
+  int32 late_minutes = 5;
+}
+
+message DepartmentAttendance {
+  string department_id = 1;
+  string date = 2;
+  int32 present_count = 3;
+  int32 late_count = 4;
+  int32 absent_count = 5;
+  int32 leave_count = 6;
+  int32 day_off_count = 7;
+  repeated DepartmentAttendanceEntry entries = 8;
+}

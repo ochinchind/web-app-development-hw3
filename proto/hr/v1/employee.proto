@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package hr.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "hr/v1/common.proto";
+
+option go_package = "hr-service/core/gen/hr/v1;hrv1";
+
+service EmployeeService {
+  rpc CreateEmployee(CreateEmployeeRequest) returns (Employee) {
+    option (google.api.http) = {
+      post: "/v1/employees"
+      body: "*"
+    };
+  }
+
+  rpc ListEmployees(ListEmployeesRequest) returns (ListEmployeesResponse) {
+    option (google.api.http) = {
+      get: "/v1/employees"
+    };
+  }
+
+  rpc GetEmployee(GetEmployeeRequest) returns (Employee) {
+    option (google.api.http) = {
+      get: "/v1/employees/{id}"
+    };
+  }
+
+  rpc UpdateEmployee(UpdateEmployeeRequest) returns (Employee) {
+    option (google.api.http) = {
+      put: "/v1/employees/{id}"
+      body: "*"
+    };
+  }
+
+  rpc PatchEmployee(PatchEmployeeRequest) returns (Employee) {
+    option (google.api.http) = {
+      patch: "/v1/employees/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteEmployee(DeleteEmployeeRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/employees/{id}"
+    };
+  }
+
+  rpc ListDepartmentEmployees(ListDepartmentEmployeesRequest) returns (ListEmployeesResponse) {
+    option (google.api.http) = {
+      get: "/v1/departments/{department_id}/employees"
+    };
+  }
+
+  rpc ListScheduleEmployees(ListScheduleEmployeesRequest) returns (ListEmployeesResponse) {
+    option (google.api.http) = {
+      get: "/v1/schedules/{schedule_id}/employees"
+    };
+  }
+}
+
+message Employee {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string full_name = 4;
+  string email = 5;
+  string phone = 6;
+  string position = 7;
+  string department_id = 8;
+  DepartmentSummary department = 9;
+  string schedule_id = 10;
+  ScheduleSummary schedule = 11;
+  double salary = 12;
+  string hire_date = 13;
+  EmployeeStatus status = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+message CreateEmployeeRequest {
+  string department_id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string phone = 5;
+  string position = 6;
+  double salary = 7;
+  string hire_date = 8;
+  string schedule_id = 9;
+  EmployeeStatus status = 10;
+}
+
+message ListEmployeesRequest {
+  string q = 1;
+  string department_id = 2;
+  EmployeeStatus status = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message ListEmployeesResponse {
+  repeated Employee employees = 1;
+  int32 total = 2;
+}
+
+message GetEmployeeRequest {
+  string id = 1;
+}
+
+message UpdateEmployeeRequest {
+  string id = 1;
+  string department_id = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string email = 5;
+  string phone = 6;
+  string position = 7;
+  double salary = 8;
+  string hire_date = 9;
+  string schedule_id = 10;
+  EmployeeStatus status = 11;
+}
+
+message PatchEmployeeRequest {
+  string id = 1;
+  optional string department_id = 2;
+  optional string first_name = 3;
+  optional string last_name = 4;
+  optional string email = 5;
+  optional string phone = 6;
+  optional string position = 7;
+  optional double salary = 8;
+  optional string hire_date = 9;
+  optional string schedule_id = 10;
+  optional EmployeeStatus status = 11;
+}
+
+message DeleteEmployeeRequest {
+  string id = 1;
+}
+
+message ListDepartmentEmployeesRequest {
+  string department_id = 1;
+  EmployeeStatus status = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ListScheduleEmployeesRequest {
+  string schedule_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}

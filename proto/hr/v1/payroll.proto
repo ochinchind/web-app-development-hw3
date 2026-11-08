@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package hr.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "hr/v1/common.proto";
+
+option go_package = "hr-service/core/gen/hr/v1;hrv1";
+
+service PayrollService {
+  rpc CreatePayslip(CreatePayslipRequest) returns (Payslip) {
+    option (google.api.http) = {
+      post: "/v1/employees/{employee_id}/payslips"
+      body: "*"
+    };
+  }
+
+  rpc ListEmployeePayslips(ListEmployeePayslipsRequest) returns (ListPayslipsResponse) {
+    option (google.api.http) = {
+      get: "/v1/employees/{employee_id}/payslips"
+    };
+  }
+
+  rpc GetPayslip(GetPayslipRequest) returns (Payslip) {
+    option (google.api.http) = {
+      get: "/v1/payslips/{id}"
+    };
+  }
+
+  rpc PatchPayslip(PatchPayslipRequest) returns (Payslip) {
+    option (google.api.http) = {
+      patch: "/v1/payslips/{id}"
+      body: "*"
+    };
+  }
+
+  rpc PayPayslip(PayPayslipRequest) returns (Payslip) {
+    option (google.api.http) = {
+      post: "/v1/payslips/{id}/pay"
+      body: "*"
+    };
+  }
+
+  rpc DeletePayslip(DeletePayslipRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/payslips/{id}"
+    };
+  }
+
+  rpc RunDepartmentPayroll(RunDepartmentPayrollRequest) returns (DepartmentPayroll) {
+    option (google.api.http) = {
+      post: "/v1/departments/{department_id}/payroll"
+      body: "*"
+    };
+  }
+
+  rpc GetDepartmentPayroll(GetDepartmentPayrollRequest) returns (DepartmentPayroll) {
+    option (google.api.http) = {
+      get: "/v1/departments/{department_id}/payroll"
+    };
+  }
+}
+
+enum PayslipStatus {
+  PAYSLIP_STATUS_UNSPECIFIED = 0;
+  DRAFT = 1;
+  PAID = 2;
+}
+
+message Payslip {
+  string id = 1;
+  string employee_id = 2;
+  EmployeeSummary employee = 3;
+  string period = 4;
+  double base_amount = 5;
+  double bonus = 6;
+  double deductions = 7;
+  double net_amount = 8;
+  PayslipStatus status = 9;
+  google.protobuf.Timestamp paid_at = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message CreatePayslipRequest {
+  string employee_id = 1;
+  string period = 2;
+  optional double base_amount = 3;
+  double bonus = 4;
+  double deductions = 5;
+}
+
+message ListEmployeePayslipsRequest {
+  string employee_id = 1;
+  PayslipStatus status = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ListPayslipsResponse {
+  repeated Payslip payslips = 1;
+  int32 total = 2;
+}
+
+message GetPayslipRequest {
+  string id = 1;
+}
+
+message PatchPayslipRequest {
+  string id = 1;
+  optional double base_amount = 2;
+  optional double bonus = 3;
+  optional double deductions = 4;
+}
+
+message PayPayslipRequest {
+  string id = 1;
+}
+
+message DeletePayslipRequest {
+  string id = 1;
+}
+
+message RunDepartmentPayrollRequest {
+  string department_id = 1;
+  string period = 2;
+}
+
+message GetDepartmentPayrollRequest {
+  string department_id = 1;
+  string period = 2;
+}
+
+message DepartmentPayroll {
+  string department_id = 1;
+  string period = 2;
+  int32 created_count = 3;
+  int32 payslip_count = 4;
+  int32 draft_count = 5;
+  int32 paid_count = 6;
+  double total_base = 7;
+  double total_bonus = 8;
+  double total_deductions = 9;
+  double total_net = 10;
+  repeated Payslip payslips = 11;
+}

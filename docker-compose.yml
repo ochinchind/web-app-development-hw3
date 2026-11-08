@@ -1,0 +1,64 @@
+name: hr-service
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+
+  core:
+    build:
+      context: .
+      dockerfile: core/Dockerfile
+    environment:
+      GRPC_PORT: 9090
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Almaty}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+    restart: unless-stopped
+
+  envoy:
+    build:
+      context: .
+      dockerfile: envoy/Dockerfile
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      - core
+    networks: [backend]
+    restart: unless-stopped
+
+  swagger:
+    build:
+      context: .
+      dockerfile: swagger/Dockerfile
+    ports:
+      - "${SWAGGER_PORT:-8081}:8080"
+    networks: [backend]
+    restart: unless-stopped
+
+networks:
+  backend:
+
+volumes:
+  pgdata:

@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package hr.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "hr/v1/common.proto";
+
+option go_package = "hr-service/core/gen/hr/v1;hrv1";
+
+service PerformanceReviewService {
+  rpc CreateReview(CreateReviewRequest) returns (PerformanceReview) {
+    option (google.api.http) = {
+      post: "/v1/employees/{employee_id}/performance-reviews"
+      body: "*"
+    };
+  }
+
+  rpc ListEmployeeReviews(ListEmployeeReviewsRequest) returns (ListReviewsResponse) {
+    option (google.api.http) = {
+      get: "/v1/employees/{employee_id}/performance-reviews"
+    };
+  }
+
+  rpc GetReview(GetReviewRequest) returns (PerformanceReview) {
+    option (google.api.http) = {
+      get: "/v1/performance-reviews/{id}"
+    };
+  }
+
+  rpc PatchReview(PatchReviewRequest) returns (PerformanceReview) {
+    option (google.api.http) = {
+      patch: "/v1/performance-reviews/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteReview(DeleteReviewRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/performance-reviews/{id}"
+    };
+  }
+}
+
+message PerformanceReview {
+  string id = 1;
+  string employee_id = 2;
+  EmployeeSummary employee = 3;
+  string reviewer_id = 4;
+  EmployeeSummary reviewer = 5;
+  string period = 6;
+  int32 score = 7;
+  string comment = 8;
+  string goals = 9;
+  string review_date = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message CreateReviewRequest {
+  string employee_id = 1;
+  string reviewer_id = 2;
+  string period = 3;
+  int32 score = 4;
+  string comment = 5;
+  string goals = 6;
+  string review_date = 7;
+}
+
+message ListEmployeeReviewsRequest {
+  string employee_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListReviewsResponse {
+  repeated PerformanceReview reviews = 1;
+  int32 total = 2;
+  double average_score = 3;
+}
+
+message GetReviewRequest {
+  string id = 1;
+}
+
+message PatchReviewRequest {
+  string id = 1;
+  optional string reviewer_id = 2;
+  optional string period = 3;
+  optional int32 score = 4;
+  optional string comment = 5;
+  optional string goals = 6;
+  optional string review_date = 7;
+}
+
+message DeleteReviewRequest {
+  string id = 1;
+}

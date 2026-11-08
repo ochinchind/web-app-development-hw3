@@ -1,0 +1,4094 @@
+{
+  "info": {
+    "name": "HR Service API",
+    "description": "HR system: departments, employees, performance reviews, work schedules, office attendance, payroll and leaves (Go gRPC service behind Envoy gRPC-JSON transcoding).\n\nRun the whole collection in order (Collection Runner or newman). The first request prepares the run (unique names, dates relative to today) and every request stores the ids it creates in collection variables. Set `baseUrl` if the API is not on http://localhost:8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "lastMonday",
+      "value": ""
+    },
+    {
+      "key": "lastTuesday",
+      "value": ""
+    },
+    {
+      "key": "prevMonth",
+      "value": ""
+    },
+    {
+      "key": "prevMonth2",
+      "value": ""
+    },
+    {
+      "key": "leaveStart",
+      "value": ""
+    },
+    {
+      "key": "leaveEnd",
+      "value": ""
+    },
+    {
+      "key": "leave2Start",
+      "value": ""
+    },
+    {
+      "key": "leave2End",
+      "value": ""
+    },
+    {
+      "key": "leave3Start",
+      "value": ""
+    },
+    {
+      "key": "leave3End",
+      "value": ""
+    },
+    {
+      "key": "deptId",
+      "value": ""
+    },
+    {
+      "key": "dept2Id",
+      "value": ""
+    },
+    {
+      "key": "scheduleId",
+      "value": ""
+    },
+    {
+      "key": "schedule2Id",
+      "value": ""
+    },
+    {
+      "key": "empId",
+      "value": ""
+    },
+    {
+      "key": "managerId",
+      "value": ""
+    },
+    {
+      "key": "emp3Id",
+      "value": ""
+    },
+    {
+      "key": "reviewId",
+      "value": ""
+    },
+    {
+      "key": "review2Id",
+      "value": ""
+    },
+    {
+      "key": "attendanceId",
+      "value": ""
+    },
+    {
+      "key": "checkInId",
+      "value": ""
+    },
+    {
+      "key": "payslipId",
+      "value": ""
+    },
+    {
+      "key": "managerPayslipId",
+      "value": ""
+    },
+    {
+      "key": "leaveId",
+      "value": ""
+    },
+    {
+      "key": "leave2Id",
+      "value": ""
+    },
+    {
+      "key": "leave3Id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Departments",
+      "description": "CRUD for departments. PUT replaces every field, PATCH changes only the fields that are sent.",
+      "item": [
+        {
+          "name": "Create department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments"
+              ]
+            },
+            "description": "`name` is required and unique (409). Returns **201 Created**.\n\nThe pre-request script of this request prepares the variables used by the whole run.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Engineering {{runId}}\",\n  \"description\": \"Product development\",\n  \"location\": \"Almaty, Abay Ave 10, floor 5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ---- run setup: unique suffix + dates relative to today ----",
+                  "const pad = (n) => String(n).padStart(2, '0');",
+                  "const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;",
+                  "const now = new Date();",
+                  "pm.collectionVariables.set('runId', Date.now().toString().slice(-7));",
+                  "// a Monday at least a week ago, and the Tuesday after it",
+                  "const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) - 7);",
+                  "const tuesday = new Date(monday); tuesday.setDate(monday.getDate() + 1);",
+                  "pm.collectionVariables.set('lastMonday', iso(monday));",
+                  "pm.collectionVariables.set('lastTuesday', iso(tuesday));",
+                  "// previous month and the month before it (payroll periods must not be in the future)",
+                  "const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);",
+                  "const prev2 = new Date(now.getFullYear(), now.getMonth() - 2, 1);",
+                  "pm.collectionVariables.set('prevMonth', `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}`);",
+                  "pm.collectionVariables.set('prevMonth2', `${prev2.getFullYear()}-${pad(prev2.getMonth() + 1)}`);",
+                  "// future leave windows",
+                  "const plus = (days) => { const d = new Date(now); d.setDate(d.getDate() + days); return iso(d); };",
+                  "pm.collectionVariables.set('leaveStart', plus(30)); pm.collectionVariables.set('leaveEnd', plus(43));",
+                  "pm.collectionVariables.set('leave2Start', plus(60)); pm.collectionVariables.set('leave2End', plus(62));",
+                  "pm.collectionVariables.set('leave3Start', plus(90)); pm.collectionVariables.set('leave3End', plus(91));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('deptId', pm.response.json().id);",
+                  "pm.test(\"no employees yet\", () => { const b = pm.response.json(); pm.expect(b.employee_count === 0 && b.average_salary === 0).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create second department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sales {{runId}}\",\n  \"location\": \"Astana\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('dept2Id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments?q={{runId}}&limit=10&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{runId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "`q` = case-insensitive name search; `limit` 1..100 (default 20); `offset` >= 0."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"both departments of this run\", () => { const b = pm.response.json(); pm.expect(b.total === 2 && b.departments.length === 2).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get department",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"right department\", () => { const b = pm.response.json(); pm.expect(b.id === pm.collectionVariables.get('deptId')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update department (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}"
+              ]
+            },
+            "description": "Full replace: omitted fields become empty.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Engineering {{runId}}\",\n  \"description\": \"Backend, frontend and QA teams\",\n  \"location\": \"Almaty, Abay Ave 10, floor 6\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"location replaced\", () => { const b = pm.response.json(); pm.expect(b.location.endsWith('floor 6')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch department (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}"
+              ]
+            },
+            "description": "Partial update: only `description` changes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Product engineering\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"description changed\", () => { const b = pm.response.json(); pm.expect(b.description === 'Product engineering').to.be.true; });",
+                  "pm.test(\"location kept\", () => { const b = pm.response.json(); pm.expect(b.location.endsWith('floor 6')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Work schedules",
+      "description": "Schedule templates assigned to employees; they define working days and when a check-in is late.",
+      "item": [
+        {
+          "name": "Create schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules"
+              ]
+            },
+            "description": "`work_days`: ISO weekdays (1 = Monday ... 7 = Sunday). A check-in later than `start_time + late_grace_minutes` is late. Returns **201 Created**.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Office 5/2 {{runId}}\",\n  \"work_days\": [\n    1,\n    2,\n    3,\n    4,\n    5\n  ],\n  \"start_time\": \"09:00\",\n  \"end_time\": \"18:00\",\n  \"late_grace_minutes\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('scheduleId', pm.response.json().id);",
+                  "pm.test(\"45 hours per week\", () => { const b = pm.response.json(); pm.expect(b.hours_per_week === 45).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create second schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules"
+              ]
+            },
+            "description": "Duplicate days are ignored and days are sorted.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Weekend shift {{runId}}\",\n  \"work_days\": [\n    7,\n    6,\n    6\n  ],\n  \"start_time\": \"10:00\",\n  \"end_time\": \"22:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('schedule2Id', pm.response.json().id);",
+                  "pm.test(\"days normalised\", () => { const b = pm.response.json(); pm.expect(JSON.stringify(b.work_days) === '[6,7]').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List schedules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"contains created schedule\", () => { const b = pm.response.json(); pm.expect(b.schedules.some(s => s.id === pm.collectionVariables.get('scheduleId'))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules/{{scheduleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules",
+                "{{scheduleId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"right schedule\", () => { const b = pm.response.json(); pm.expect(b.id === pm.collectionVariables.get('scheduleId')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update schedule (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules/{{scheduleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules",
+                "{{scheduleId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Office 5/2 {{runId}}\",\n  \"work_days\": [\n    1,\n    2,\n    3,\n    4,\n    5\n  ],\n  \"start_time\": \"09:00\",\n  \"end_time\": \"18:00\",\n  \"late_grace_minutes\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"grace changed\", () => { const b = pm.response.json(); pm.expect(b.late_grace_minutes === 15).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Employees",
+      "description": "Employees belong to one department (one-to-many) and optionally follow a work schedule (one-to-many).",
+      "item": [
+        {
+          "name": "Create employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ]
+            },
+            "description": "Required: `department_id` (must exist), `first_name`, `last_name`, `email` (unique, lower-cased). `hire_date` defaults to today, `status` to ACTIVE. Returns **201 Created** with the department and schedule embedded.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"{{deptId}}\",\n  \"first_name\": \"Aigerim\",\n  \"last_name\": \"Sadykova\",\n  \"email\": \"Aigerim.{{runId}}@Example.com\",\n  \"phone\": \"+7 701 555-12-34\",\n  \"position\": \"Backend developer\",\n  \"salary\": 850000,\n  \"hire_date\": \"2024-03-01\",\n  \"schedule_id\": \"{{scheduleId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('empId', pm.response.json().id);",
+                  "pm.test(\"email normalised\", () => { const b = pm.response.json(); pm.expect(b.email === b.email.toLowerCase()).to.be.true; });",
+                  "pm.test(\"phone normalised\", () => { const b = pm.response.json(); pm.expect(b.phone === '+77015551234').to.be.true; });",
+                  "pm.test(\"department embedded\", () => { const b = pm.response.json(); pm.expect(b.department.id === pm.collectionVariables.get('deptId')).to.be.true; });",
+                  "pm.test(\"schedule embedded\", () => { const b = pm.response.json(); pm.expect(b.schedule.id === pm.collectionVariables.get('scheduleId')).to.be.true; });",
+                  "pm.test(\"ACTIVE by default\", () => { const b = pm.response.json(); pm.expect(b.status === 'ACTIVE').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ]
+            },
+            "description": "No schedule: Monday-Friday count as working days and lateness is not tracked.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"{{deptId}}\",\n  \"first_name\": \"Daniyar\",\n  \"last_name\": \"Akhmetov\",\n  \"email\": \"daniyar.{{runId}}@example.com\",\n  \"position\": \"Team lead\",\n  \"salary\": 1200000,\n  \"hire_date\": \"2022-01-10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('managerId', pm.response.json().id);",
+                  "pm.test(\"no schedule\", () => { const b = pm.response.json(); pm.expect(b.schedule_id === '').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create employee in second department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"{{dept2Id}}\",\n  \"first_name\": \"Ruslan\",\n  \"last_name\": \"Bekov\",\n  \"email\": \"ruslan.{{runId}}@example.com\",\n  \"position\": \"Sales manager\",\n  \"salary\": 600000,\n  \"hire_date\": \"2025-06-01\",\n  \"schedule_id\": \"{{schedule2Id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('emp3Id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List employees (filters)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees?q={{runId}}&department_id={{deptId}}&status=ACTIVE&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{runId}}"
+                },
+                {
+                  "key": "department_id",
+                  "value": "{{deptId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Filters: `q` (name, email or position), `department_id`, `status`, plus `limit` / `offset`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"two employees in Engineering\", () => { const b = pm.response.json(); pm.expect(b.total === 2).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get employee",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"right employee\", () => { const b = pm.response.json(); pm.expect(b.id === pm.collectionVariables.get('empId')).to.be.true; });",
+                  "pm.test(\"full_name\", () => { const b = pm.response.json(); pm.expect(b.full_name === 'Aigerim Sadykova').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update employee (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}"
+              ]
+            },
+            "description": "Full replace of all writable fields.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"{{deptId}}\",\n  \"first_name\": \"Aigerim\",\n  \"last_name\": \"Sadykova\",\n  \"email\": \"aigerim.{{runId}}@example.com\",\n  \"phone\": \"+77015551234\",\n  \"position\": \"Senior backend developer\",\n  \"salary\": 900000,\n  \"hire_date\": \"2024-03-01\",\n  \"schedule_id\": \"{{scheduleId}}\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"position replaced\", () => { const b = pm.response.json(); pm.expect(b.position === 'Senior backend developer').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch employee (PATCH) - salary raise",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}"
+              ]
+            },
+            "description": "Partial update: only `salary` changes. `schedule_id: \"\"` would remove the schedule.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"salary\": 950000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"salary changed\", () => { const b = pm.response.json(); pm.expect(b.salary === 950000).to.be.true; });",
+                  "pm.test(\"position kept\", () => { const b = pm.response.json(); pm.expect(b.position === 'Senior backend developer').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List department's employees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}",
+                "employees"
+              ]
+            },
+            "description": "Related data (one-to-many). Optional `status`, `limit`, `offset`. 404 for an unknown department."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"two employees\", () => { const b = pm.response.json(); pm.expect(b.total === 2).to.be.true; });",
+                  "pm.test(\"all in this department\", () => { const b = pm.response.json(); pm.expect(b.employees.every(e => e.department_id === pm.collectionVariables.get('deptId'))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List schedule's employees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules/{{scheduleId}}/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules",
+                "{{scheduleId}}",
+                "employees"
+              ]
+            },
+            "description": "Related data (one-to-many): who works on this schedule."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"only the developer\", () => { const b = pm.response.json(); pm.expect(b.total === 1 && b.employees[0].id === pm.collectionVariables.get('empId')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Department shows headcount and average salary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"2 employees, average (950000 + 1200000) / 2\", () => { const b = pm.response.json(); pm.expect(b.employee_count === 2 && b.average_salary === 1075000).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Performance reviews",
+      "description": "One review per employee per quarter, score 1..5. The reviewer is another employee.",
+      "item": [
+        {
+          "name": "Create performance review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/performance-reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "performance-reviews"
+              ]
+            },
+            "description": "`period` like `2026-Q3` (normalised to upper case), `score` 1..5, `reviewer_id` optional (must exist, cannot be the employee). `review_date` defaults to today and must not be in the future. Returns **201 Created**.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer_id\": \"{{managerId}}\",\n  \"period\": \"2026-q3\",\n  \"score\": 4,\n  \"comment\": \"Delivered the payroll module on time.\",\n  \"goals\": \"Mentor a junior developer\",\n  \"review_date\": \"{{lastMonday}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reviewId', pm.response.json().id);",
+                  "pm.test(\"period normalised\", () => { const b = pm.response.json(); pm.expect(b.period === '2026-Q3').to.be.true; });",
+                  "pm.test(\"reviewer embedded\", () => { const b = pm.response.json(); pm.expect(b.reviewer.id === pm.collectionVariables.get('managerId')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create second review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/performance-reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "performance-reviews"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer_id\": \"{{managerId}}\",\n  \"period\": \"2026-Q2\",\n  \"score\": 5,\n  \"comment\": \"Outstanding quarter.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('review2Id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List employee's reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/performance-reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "performance-reviews"
+              ]
+            },
+            "description": "Related data (one-to-many), newest period first, with `average_score`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"2 reviews, average 4.5\", () => { const b = pm.response.json(); pm.expect(b.total === 2 && b.average_score === 4.5).to.be.true; });",
+                  "pm.test(\"newest first\", () => { const b = pm.response.json(); pm.expect(b.reviews[0].period === '2026-Q3').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/performance-reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "performance-reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"right review\", () => { const b = pm.response.json(); pm.expect(b.id === pm.collectionVariables.get('reviewId')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch review (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/performance-reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "performance-reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"score\": 5,\n  \"goals\": \"Mentor a junior developer; lead the attendance feature\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"score changed\", () => { const b = pm.response.json(); pm.expect(b.score === 5).to.be.true; });",
+                  "pm.test(\"comment kept\", () => { const b = pm.response.json(); pm.expect(b.comment.startsWith('Delivered')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Office attendance",
+      "description": "One record per employee per day. Lateness is calculated from the work schedule when the record is created.",
+      "item": [
+        {
+          "name": "Add attendance record (late)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "attendance"
+              ]
+            },
+            "description": "Manual record for a past day (HR correction). Schedule 09:00 + 15 min grace, arrived 09:25, so the employee is 25 minutes late. Returns **201 Created**.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{lastMonday}}\",\n  \"check_in\": \"09:25\",\n  \"check_out\": \"18:10\",\n  \"note\": \"Traffic jam\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('attendanceId', pm.response.json().id);",
+                  "pm.test(\"25 minutes late\", () => { const b = pm.response.json(); pm.expect(b.is_late && b.late_minutes === 25).to.be.true; });",
+                  "pm.test(\"8h45m worked\", () => { const b = pm.response.json(); pm.expect(b.worked_minutes === 525).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add attendance record (on time)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "attendance"
+              ]
+            },
+            "description": "09:10 is within the 15 minute grace period, so it is not late.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{lastTuesday}}\",\n  \"check_in\": \"09:10\",\n  \"check_out\": \"18:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test(\"not late\", () => { const b = pm.response.json(); pm.expect(!b.is_late && b.late_minutes === 0).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check in (now)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{managerId}}/attendance/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{managerId}}",
+                "attendance",
+                "check-in"
+              ]
+            },
+            "description": "Marks that the employee came to the office now (today, server time zone). Returns **201 Created**.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Main office\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('checkInId', pm.response.json().id);",
+                  "pm.test(\"no check-out yet\", () => { const b = pm.response.json(); pm.expect(b.check_out === '' && b.worked_minutes === 0).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check out (now)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{managerId}}/attendance/check-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{managerId}}",
+                "attendance",
+                "check-out"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"same record\", () => { const b = pm.response.json(); pm.expect(b.id === pm.collectionVariables.get('checkInId')).to.be.true; });",
+                  "pm.test(\"check_out set\", () => { const b = pm.response.json(); pm.expect(b.check_out !== '').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List employee's attendance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/attendance?date_from={{lastMonday}}&date_to={{lastTuesday}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "attendance"
+              ],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "{{lastMonday}}"
+                },
+                {
+                  "key": "date_to",
+                  "value": "{{lastTuesday}}"
+                }
+              ]
+            },
+            "description": "Related data (one-to-many), newest first, with a summary for the whole date range."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"2 days, 1 late\", () => { const b = pm.response.json(); pm.expect(b.total === 2 && b.summary.days_present === 2 && b.summary.days_late === 1).to.be.true; });",
+                  "pm.test(\"worked 525 + 530 minutes\", () => { const b = pm.response.json(); pm.expect(b.summary.total_worked_minutes === 1055).to.be.true; });",
+                  "pm.test(\"25 late minutes\", () => { const b = pm.response.json(); pm.expect(b.summary.total_late_minutes === 25).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Department attendance for a day",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}/attendance?date={{lastMonday}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}",
+                "attendance"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{lastMonday}}"
+                }
+              ]
+            },
+            "description": "Who was in the office: PRESENT / LATE / ABSENT / LEAVE (approved leave) / DAY_OFF (not a working day of their schedule)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"developer was late\", () => { const b = pm.response.json(); pm.expect(b.entries.find(e => e.employee.id === pm.collectionVariables.get('empId')).status === 'LATE').to.be.true; });",
+                  "pm.test(\"manager was absent\", () => { const b = pm.response.json(); pm.expect(b.entries.find(e => e.employee.id === pm.collectionVariables.get('managerId')).status === 'ABSENT').to.be.true; });",
+                  "pm.test(\"counts\", () => { const b = pm.response.json(); pm.expect(b.present_count === 1 && b.late_count === 1 && b.absent_count === 1).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Payroll",
+      "description": "Payslips: base + bonus - deductions = net. DRAFT can be edited, then it is PAID (final).",
+      "item": [
+        {
+          "name": "Create payslip",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/payslips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "payslips"
+              ]
+            },
+            "description": "`period` is a month `YYYY-MM` (not in the future, one payslip per employee per month). `base_amount` defaults to the current salary. Returns **201 Created** as DRAFT.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"{{prevMonth}}\",\n  \"bonus\": 100000,\n  \"deductions\": 95000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('payslipId', pm.response.json().id);",
+                  "pm.test(\"base = salary\", () => { const b = pm.response.json(); pm.expect(b.base_amount === 950000).to.be.true; });",
+                  "pm.test(\"net = 950000 + 100000 - 95000\", () => { const b = pm.response.json(); pm.expect(b.net_amount === 955000).to.be.true; });",
+                  "pm.test(\"DRAFT\", () => { const b = pm.response.json(); pm.expect(b.status === 'DRAFT').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Run department payroll",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}/payroll",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}",
+                "payroll"
+              ]
+            },
+            "description": "Creates DRAFT payslips (base = salary) for every employee of the department who has none for the month yet. Returns **201** when payslips were created (200 if everyone already had one).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"{{prevMonth}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test(\"one new payslip (the manager)\", () => { const b = pm.response.json(); pm.expect(b.created_count === 1 && b.payslip_count === 2).to.be.true; });",
+                  "pm.collectionVariables.set('managerPayslipId', pm.response.json().payslips.find(p => p.employee_id === pm.collectionVariables.get('managerId')).id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get department payroll",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}/payroll?period={{prevMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}",
+                "payroll"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "{{prevMonth}}"
+                }
+              ]
+            },
+            "description": "Totals for the month (defaults to the current month)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"total net 955000 + 1200000\", () => { const b = pm.response.json(); pm.expect(b.total_net === 2155000).to.be.true; });",
+                  "pm.test(\"2 drafts\", () => { const b = pm.response.json(); pm.expect(b.draft_count === 2 && b.paid_count === 0).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List employee's payslips",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/payslips?status=DRAFT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "payslips"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "DRAFT"
+                }
+              ]
+            },
+            "description": "Related data (one-to-many), newest period first. Optional `status`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"one draft\", () => { const b = pm.response.json(); pm.expect(b.total === 1).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get payslip",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payslips/{{payslipId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payslips",
+                "{{payslipId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"employee embedded\", () => { const b = pm.response.json(); pm.expect(b.employee.id === pm.collectionVariables.get('empId')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch payslip (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payslips/{{payslipId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payslips",
+                "{{payslipId}}"
+              ]
+            },
+            "description": "Only DRAFT payslips can be changed; `net_amount` is recalculated.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bonus\": 150000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"net recalculated\", () => { const b = pm.response.json(); pm.expect(b.net_amount === 1005000).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pay payslip",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payslips/{{payslipId}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payslips",
+                "{{payslipId}}",
+                "pay"
+              ]
+            },
+            "description": "DRAFT -> PAID, sets `paid_at`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"PAID\", () => { const b = pm.response.json(); pm.expect(b.status === 'PAID' && !!b.paid_at).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Leaves",
+      "description": "Vacation / sick leave / unpaid leave requests: PENDING -> APPROVED | REJECTED.",
+      "item": [
+        {
+          "name": "Request vacation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "leaves"
+              ]
+            },
+            "description": "`type`: VACATION, SICK_LEAVE or UNPAID_LEAVE (case-insensitive). Dates inclusive. Overlapping PENDING/APPROVED leaves are rejected with 409. Returns **201 Created** as PENDING.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"VACATION\",\n  \"start_date\": \"{{leaveStart}}\",\n  \"end_date\": \"{{leaveEnd}}\",\n  \"reason\": \"Family trip\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('leaveId', pm.response.json().id);",
+                  "pm.test(\"14 days\", () => { const b = pm.response.json(); pm.expect(b.days === 14).to.be.true; });",
+                  "pm.test(\"PENDING\", () => { const b = pm.response.json(); pm.expect(b.status === 'PENDING').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request sick leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{managerId}}/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{managerId}}",
+                "leaves"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"sick_leave\",\n  \"start_date\": \"{{leave2Start}}\",\n  \"end_date\": \"{{leave2End}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('leave2Id', pm.response.json().id);",
+                  "pm.test(\"type parsed\", () => { const b = pm.response.json(); pm.expect(b.type === 'SICK_LEAVE').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request unpaid leave (to withdraw later)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "leaves"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"UNPAID_LEAVE\",\n  \"start_date\": \"{{leave3Start}}\",\n  \"end_date\": \"{{leave3End}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('leave3Id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List employee's leaves",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "leaves"
+              ]
+            },
+            "description": "Related data (one-to-many). Optional `status`, `limit`, `offset`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"two leaves\", () => { const b = pm.response.json(); pm.expect(b.total === 2).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approval queue (pending leaves of a department)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/leaves?status=PENDING&department_id={{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "leaves"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "department_id",
+                  "value": "{{deptId}}"
+                }
+              ]
+            },
+            "description": "Filters: `status`, `type`, `department_id`, `limit`, `offset`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"3 pending\", () => { const b = pm.response.json(); pm.expect(b.total === 3 && b.leaves.every(l => l.status === 'PENDING')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get leave",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/leaves/{{leaveId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "leaves",
+                "{{leaveId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"right leave\", () => { const b = pm.response.json(); pm.expect(b.id === pm.collectionVariables.get('leaveId')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/leaves/{{leaveId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "leaves",
+                "{{leaveId}}",
+                "approve"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Enjoy your trip!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"APPROVED\", () => { const b = pm.response.json(); pm.expect(b.status === 'APPROVED' && !!b.decided_at).to.be.true; });",
+                  "pm.test(\"comment saved\", () => { const b = pm.response.json(); pm.expect(b.decision_comment === 'Enjoy your trip!').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/leaves/{{leave2Id}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "leaves",
+                "{{leave2Id}}",
+                "reject"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Please bring a medical certificate\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"REJECTED\", () => { const b = pm.response.json(); pm.expect(b.status === 'REJECTED').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Validation & errors",
+      "description": "Every error has the JSON shape `{ \"code\": <gRPC code>, \"message\": \"...\", \"details\": [] }`.",
+      "item": [
+        {
+          "name": "400 - missing required field",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"{{deptId}}\",\n  \"last_name\": \"Nobody\",\n  \"email\": \"nobody.{{runId}}@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: first_name is required\", () => pm.expect(pm.response.json().message).to.include(\"first_name is required\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - invalid email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"{{deptId}}\",\n  \"first_name\": \"A\",\n  \"last_name\": \"B\",\n  \"email\": \"not-an-email\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: email\", () => pm.expect(pm.response.json().message).to.include(\"email\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - negative salary",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"salary\": -5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: salary\", () => pm.expect(pm.response.json().message).to.include(\"salary\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - unknown department in body",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"first_name\": \"A\",\n  \"last_name\": \"B\",\n  \"email\": \"ab.{{runId}}@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: department_id does not reference\", () => pm.expect(pm.response.json().message).to.include(\"department_id does not reference\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - schedule ends before it starts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Broken {{runId}}\",\n  \"work_days\": [\n    1\n  ],\n  \"start_time\": \"18:00\",\n  \"end_time\": \"09:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: end_time must be later\", () => pm.expect(pm.response.json().message).to.include(\"end_time must be later\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - invalid time format",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "attendance"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{lastMonday}}\",\n  \"check_in\": \"9am\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: HH:MM\", () => pm.expect(pm.response.json().message).to.include(\"HH:MM\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - score out of range",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/performance-reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "performance-reviews"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"2026-Q1\",\n  \"score\": 7\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: score must be between 1 and 5\", () => pm.expect(pm.response.json().message).to.include(\"score must be between 1 and 5\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - employee reviews themselves",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/performance-reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "performance-reviews"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer_id\": \"{{empId}}\",\n  \"period\": \"2026-Q1\",\n  \"score\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: cannot review themselves\", () => pm.expect(pm.response.json().message).to.include(\"cannot review themselves\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - invalid date format",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "leaves"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"VACATION\",\n  \"start_date\": \"01.12.2026\",\n  \"end_date\": \"05.12.2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: YYYY-MM-DD\", () => pm.expect(pm.response.json().message).to.include(\"YYYY-MM-DD\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - invalid enum value",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "leaves"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"HOLIDAY\",\n  \"start_date\": \"{{leave3Start}}\",\n  \"end_date\": \"{{leave3End}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: type\", () => pm.expect(pm.response.json().message).to.include(\"type\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - deductions exceed the amount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/payslips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "payslips"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"{{prevMonth2}}\",\n  \"deductions\": 5000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: deductions must not exceed\", () => pm.expect(pm.response.json().message).to.include(\"deductions must not exceed\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - empty PATCH body",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: at least one field\", () => pm.expect(pm.response.json().message).to.include(\"at least one field\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - malformed JSON",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Broken",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - unknown query parameter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees?colour=red",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ],
+              "query": [
+                {
+                  "key": "colour",
+                  "value": "red"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: colour\", () => pm.expect(pm.response.json().message).to.include(\"colour\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - invalid UUID in path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/42",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "42"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error body has code 3', () => pm.expect(pm.response.json().code).to.eql(3));",
+                  "pm.test(\"message mentions: valid UUID\", () => pm.expect(pm.response.json().message).to.include(\"valid UUID\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - employee not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error body has code 5', () => pm.expect(pm.response.json().code).to.eql(5));",
+                  "pm.test(\"message mentions: employee not found\", () => pm.expect(pm.response.json().message).to.include(\"employee not found\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - reviews of unknown employee",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/00000000-0000-0000-0000-000000000000/performance-reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "00000000-0000-0000-0000-000000000000",
+                "performance-reviews"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error body has code 5', () => pm.expect(pm.response.json().code).to.eql(5));",
+                  "pm.test(\"message mentions: employee not found\", () => pm.expect(pm.response.json().message).to.include(\"employee not found\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - unknown route",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/salaries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "salaries"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error body has code 5', () => pm.expect(pm.response.json().code).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - duplicate email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"{{deptId}}\",\n  \"first_name\": \"Copy\",\n  \"last_name\": \"Cat\",\n  \"email\": \"AIGERIM.{{runId}}@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 6', () => pm.expect(pm.response.json().code).to.eql(6));",
+                  "pm.test(\"message mentions: email already exists\", () => pm.expect(pm.response.json().message).to.include(\"email already exists\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - second payslip for the same month",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/payslips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "payslips"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"{{prevMonth}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 6', () => pm.expect(pm.response.json().code).to.eql(6));",
+                  "pm.test(\"message mentions: already has a payslip\", () => pm.expect(pm.response.json().message).to.include(\"already has a payslip\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - second review for the same quarter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/performance-reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "performance-reviews"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"2026-Q3\",\n  \"score\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 6', () => pm.expect(pm.response.json().code).to.eql(6));",
+                  "pm.test(\"message mentions: already has a performance review\", () => pm.expect(pm.response.json().message).to.include(\"already has a performance review\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - pay an already paid payslip",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payslips/{{payslipId}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payslips",
+                "{{payslipId}}",
+                "pay"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: already paid\", () => pm.expect(pm.response.json().message).to.include(\"already paid\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - change a paid payslip",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payslips/{{payslipId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payslips",
+                "{{payslipId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bonus\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: PAID\", () => pm.expect(pm.response.json().message).to.include(\"PAID\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - approve an already decided leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/leaves/{{leaveId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "leaves",
+                "{{leaveId}}",
+                "approve"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: already APPROVED\", () => pm.expect(pm.response.json().message).to.include(\"already APPROVED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - overlapping leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}",
+                "leaves"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"SICK_LEAVE\",\n  \"start_date\": \"{{leaveStart}}\",\n  \"end_date\": \"{{leaveStart}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: overlaps\", () => pm.expect(pm.response.json().message).to.include(\"overlaps\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - check in twice on the same day",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{managerId}}/attendance/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{managerId}}",
+                "attendance",
+                "check-in"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: already checked in\", () => pm.expect(pm.response.json().message).to.include(\"already checked in\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - check out twice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{managerId}}/attendance/check-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{managerId}}",
+                "attendance",
+                "check-out"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: already checked out\", () => pm.expect(pm.response.json().message).to.include(\"already checked out\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - delete a department that has employees",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: still has 2 employees\", () => pm.expect(pm.response.json().message).to.include(\"still has 2 employees\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Terminate employee (PATCH status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{emp3Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{emp3Id}}"
+              ]
+            },
+            "description": "Setup for the next request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"TERMINATED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"TERMINATED\", () => { const b = pm.response.json(); pm.expect(b.status === 'TERMINATED').to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - terminated employee checks in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{emp3Id}}/attendance/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{emp3Id}}",
+                "attendance",
+                "check-in"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: terminated\", () => pm.expect(pm.response.json().message).to.include(\"terminated\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Deletes & cascade",
+      "description": "DELETE endpoints return **204 No Content** with an empty body.",
+      "item": [
+        {
+          "name": "Delete attendance record",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/attendance/{{attendanceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "attendance",
+                "{{attendanceId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));",
+                  "pm.test('empty body', () => pm.expect(pm.response.text()).to.eql(''));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete DRAFT payslip",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payslips/{{managerPayslipId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payslips",
+                "{{managerPayslipId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));",
+                  "pm.test('empty body', () => pm.expect(pm.response.text()).to.eql(''));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - delete PAID payslip",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payslips/{{payslipId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payslips",
+                "{{payslipId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: paid payslips cannot be deleted\", () => pm.expect(pm.response.json().message).to.include(\"paid payslips cannot be deleted\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Withdraw PENDING leave",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/leaves/{{leave3Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "leaves",
+                "{{leave3Id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 - withdraw decided leave",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/leaves/{{leave2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "leaves",
+                "{{leave2Id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error body has code 9', () => pm.expect(pm.response.json().code).to.eql(9));",
+                  "pm.test(\"message mentions: only PENDING\", () => pm.expect(pm.response.json().message).to.include(\"only PENDING\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete review",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/performance-reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "performance-reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deleted review is gone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/performance-reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "performance-reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error body has code 5', () => pm.expect(pm.response.json().code).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules/{{scheduleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules",
+                "{{scheduleId}}"
+              ]
+            },
+            "description": "Employees on the schedule are kept; their schedule_id becomes empty (ON DELETE SET NULL)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Employee lost the deleted schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"schedule_id cleared\", () => { const b = pm.response.json(); pm.expect(b.schedule_id === '' && !b.schedule).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete manager (the reviewer)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{managerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{managerId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review keeps existing without reviewer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/performance-reviews/{{review2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "performance-reviews",
+                "{{review2Id}}"
+              ]
+            },
+            "description": "performance_reviews.reviewer_id is ON DELETE SET NULL."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"reviewer cleared\", () => { const b = pm.response.json(); pm.expect(b.reviewer_id === '' && !b.reviewer).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete employee (cascade)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{empId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{empId}}"
+              ]
+            },
+            "description": "Also deletes the employee's reviews, attendance, payslips and leaves (ON DELETE CASCADE)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Employee's review is gone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/performance-reviews/{{review2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "performance-reviews",
+                "{{review2Id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error body has code 5', () => pm.expect(pm.response.json().code).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Employee's payslip is gone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payslips/{{payslipId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payslips",
+                "{{payslipId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error body has code 5', () => pm.expect(pm.response.json().code).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Employee's leave is gone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/leaves/{{leaveId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "leaves",
+                "{{leaveId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error body has code 5', () => pm.expect(pm.response.json().code).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete department (now empty)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete remaining employee",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/employees/{{emp3Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "employees",
+                "{{emp3Id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete second department",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{dept2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{dept2Id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete second schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/schedules/{{schedule2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "schedules",
+                "{{schedule2Id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete again -> 404",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/departments/{{deptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "departments",
+                "{{deptId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error body has code 5', () => pm.expect(pm.response.json().code).to.eql(5));",
+                  "pm.test(\"message mentions: department not found\", () => pm.expect(pm.response.json().message).to.include(\"department not found\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

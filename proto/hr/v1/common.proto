@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package hr.v1;
+
+option go_package = "hr-service/core/gen/hr/v1;hrv1";
+
+enum EmployeeStatus {
+  EMPLOYEE_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  ON_LEAVE = 2;
+  TERMINATED = 3;
+}
+
+message DepartmentSummary {
+  string id = 1;
+  string name = 2;
+}
+
+message EmployeeSummary {
+  string id = 1;
+  string full_name = 2;
+  string position = 3;
+}
+
+message ScheduleSummary {
+  string id = 1;
+  string name = 2;
+}

@@ -1,0 +1,146 @@
+
+static_resources:
+  listeners:
+    - name: http
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 8080 }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                codec_type: AUTO
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: api
+                      domains: ["*"]
+                      typed_per_filter_config:
+                        envoy.filters.http.cors:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                          allow_origin_string_match:
+                            - safe_regex: { regex: ".*" }
+                          allow_methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+                          allow_headers: "content-type"
+                      routes:
+                        - match: { prefix: "/" }
+                          route: { cluster: core, timeout: 15s }
+                http_filters:
+                  - name: envoy.filters.http.cors
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
+
+                  # Runs on the response *after* the transcoder (response filters run in reverse order).
+                  - name: envoy.filters.http.lua
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+                      default_source_code:
+                        inline_string: |
+                          -- gRPC code used when Envoy itself rejects a request (keyed by HTTP status)
+                          local grpc_codes = { [400] = 3, [404] = 5, [413] = 8, [415] = 3, [503] = 14, [504] = 4 }
+
+                          local function json_escape(s)
+                            return (s:gsub('[%c"\\]', function(c)
+                              if c == '"' then return '\\"' end
+                              if c == '\\' then return '\\\\' end
+                              if c == '\n' then return '\\n' end
+                              if c == '\t' then return '\\t' end
+                              return string.format('\\u%04x', c:byte())
+                            end))
+                          end
+
+                          function envoy_on_response(handle)
+                            local headers = handle:headers()
+                            local status = tonumber(headers:get(":status"))
+                            local wanted = headers:get("x-http-status")
+                            headers:remove("x-http-status")
+                            headers:remove("grpc-status")
+                            headers:remove("grpc-message")
+
+                            -- error with a status requested by the service: FAILED_PRECONDITION ("not allowed in
+                            -- the current state", e.g. paying an already paid payslip) is sent as 409, not 400
+                            if wanted ~= nil and status ~= nil and status >= 400 then
+                              headers:replace(":status", wanted)
+                              return
+                            end
+
+                            -- success: apply the status the service asked for (201 Created / 204 No Content)
+                            if status == 200 then
+                              if wanted == "201" then
+                                headers:replace(":status", "201")
+                              elseif wanted == "204" then
+                                headers:replace(":status", "204")
+                                headers:remove("content-type")
+                                -- 204 must not carry a body: drop the "{}" produced for google.protobuf.Empty
+                                -- (header changes above happen first; the header object is unusable after body())
+                                local body = handle:body()
+                                if body ~= nil then
+                                  body:setBytes("")
+                                end
+                              end
+                              return
+                            end
+
+                            -- errors produced by Envoy itself (malformed JSON, unknown route, bad query
+                            -- parameter, ...) are plain text: wrap them in the same JSON shape gRPC errors have
+                            local ctype = headers:get("content-type") or ""
+                            if status ~= nil and status >= 400 and not ctype:find("json") then
+                              -- headers must be changed before body(): the header object is unusable after it
+                              headers:replace("content-type", "application/json")
+                              local body = handle:body()
+                              if body == nil then
+                                return
+                              end
+                              local msg = body:getBytes(0, body:length()):gsub("%s+$", "")
+                              body:setBytes(string.format('{\n "code": %d,\n "message": "%s",\n "details": []\n}\n',
+                                grpc_codes[status] or 2, json_escape(msg)))
+                            end
+                          end
+
+                  - name: envoy.filters.http.grpc_json_transcoder
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_json_transcoder.v3.GrpcJsonTranscoder
+                      proto_descriptor: /etc/envoy/proto.pb
+                      services:
+                        - hr.v1.DepartmentService
+                        - hr.v1.EmployeeService
+                        - hr.v1.ScheduleService
+                        - hr.v1.PerformanceReviewService
+                        - hr.v1.AttendanceService
+                        - hr.v1.PayrollService
+                        - hr.v1.LeaveService
+                      convert_grpc_status: true
+                      case_insensitive_enum_parsing: true        # "vacation" == "VACATION"
+                      request_validation_options:
+                        reject_unknown_method: true            # unknown path/method → 404 instead of reaching core
+                        reject_unknown_query_parameters: true  # typo in a query param → 400
+                      print_options:
+                        add_whitespace: true
+                        always_print_primitive_fields: true
+                        preserve_proto_field_names: true
+
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    - name: core
+      type: STRICT_DNS
+      connect_timeout: 5s
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {} # gRPC needs HTTP/2
+      load_assignment:
+        cluster_name: core
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: { address: core, port_value: 9090 }
+
+admin:
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }

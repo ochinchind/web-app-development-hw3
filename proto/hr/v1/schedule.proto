@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package hr.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "hr-service/core/gen/hr/v1;hrv1";
+
+service ScheduleService {
+  rpc CreateSchedule(CreateScheduleRequest) returns (WorkSchedule) {
+    option (google.api.http) = {
+      post: "/v1/schedules"
+      body: "*"
+    };
+  }
+
+  rpc ListSchedules(google.protobuf.Empty) returns (ListSchedulesResponse) {
+    option (google.api.http) = {
+      get: "/v1/schedules"
+    };
+  }
+
+  rpc GetSchedule(GetScheduleRequest) returns (WorkSchedule) {
+    option (google.api.http) = {
+      get: "/v1/schedules/{id}"
+    };
+  }
+
+  rpc UpdateSchedule(UpdateScheduleRequest) returns (WorkSchedule) {
+    option (google.api.http) = {
+      put: "/v1/schedules/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteSchedule(DeleteScheduleRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/schedules/{id}"
+    };
+  }
+}
+
+message WorkSchedule {
+  string id = 1;
+  string name = 2;
+  repeated int32 work_days = 3;
+  string start_time = 4;
+  string end_time = 5;
+  int32 late_grace_minutes = 6;
+  double hours_per_week = 7;
+  int32 employee_count = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message CreateScheduleRequest {
+  string name = 1;
+  repeated int32 work_days = 2;
+  string start_time = 3;
+  string end_time = 4;
+  int32 late_grace_minutes = 5;
+}
+
+message ListSchedulesResponse {
+  repeated WorkSchedule schedules = 1;
+}
+
+message GetScheduleRequest {
+  string id = 1;
+}
+
+message UpdateScheduleRequest {
+  string id = 1;
+  string name = 2;
+  repeated int32 work_days = 3;
+  string start_time = 4;
+  string end_time = 5;
+  int32 late_grace_minutes = 6;
+}
+
+message DeleteScheduleRequest {
+  string id = 1;
+}

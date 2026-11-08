@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package hr.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "hr/v1/common.proto";
+
+option go_package = "hr-service/core/gen/hr/v1;hrv1";
+
+service LeaveService {
+  rpc CreateLeave(CreateLeaveRequest) returns (Leave) {
+    option (google.api.http) = {
+      post: "/v1/employees/{employee_id}/leaves"
+      body: "*"
+    };
+  }
+
+  rpc ListEmployeeLeaves(ListEmployeeLeavesRequest) returns (ListLeavesResponse) {
+    option (google.api.http) = {
+      get: "/v1/employees/{employee_id}/leaves"
+    };
+  }
+
+  rpc ListLeaves(ListLeavesRequest) returns (ListLeavesResponse) {
+    option (google.api.http) = {
+      get: "/v1/leaves"
+    };
+  }
+
+  rpc GetLeave(GetLeaveRequest) returns (Leave) {
+    option (google.api.http) = {
+      get: "/v1/leaves/{id}"
+    };
+  }
+
+  rpc ApproveLeave(DecideLeaveRequest) returns (Leave) {
+    option (google.api.http) = {
+      post: "/v1/leaves/{id}/approve"
+      body: "*"
+    };
+  }
+
+  rpc RejectLeave(DecideLeaveRequest) returns (Leave) {
+    option (google.api.http) = {
+      post: "/v1/leaves/{id}/reject"
+      body: "*"
+    };
+  }
+
+  rpc DeleteLeave(DeleteLeaveRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/leaves/{id}"
+    };
+  }
+}
+
+enum LeaveType {
+  LEAVE_TYPE_UNSPECIFIED = 0;
+  VACATION = 1;
+  SICK_LEAVE = 2;
+  UNPAID_LEAVE = 3;
+}
+
+enum LeaveStatus {
+  LEAVE_STATUS_UNSPECIFIED = 0;
+  PENDING = 1;
+  APPROVED = 2;
+  REJECTED = 3;
+}
+
+message Leave {
+  string id = 1;
+  string employee_id = 2;
+  EmployeeSummary employee = 3;
+  LeaveType type = 4;
+  string start_date = 5;
+  string end_date = 6;
+  int32 days = 7;
+  string reason = 8;
+  LeaveStatus status = 9;
+  string decision_comment = 10;
+  google.protobuf.Timestamp decided_at = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message CreateLeaveRequest {
+  string employee_id = 1;
+  LeaveType type = 2;
+  string start_date = 3;
+  string end_date = 4;
+  string reason = 5;
+}
+
+message ListEmployeeLeavesRequest {
+  string employee_id = 1;
+  LeaveStatus status = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ListLeavesRequest {
+  LeaveStatus status = 1;
+  LeaveType type = 2;
+  string department_id = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message ListLeavesResponse {
+  repeated Leave leaves = 1;
+  int32 total = 2;
+}
+
+message GetLeaveRequest {
+  string id = 1;
+}
+
+message DecideLeaveRequest {
+  string id = 1;
+  string comment = 2;
+}
+
+message DeleteLeaveRequest {
+  string id = 1;
+}
